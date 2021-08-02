@@ -64,6 +64,14 @@
     "Computer1", "Computer2" | Push-Automate -Server 'YOURSERVER.DOMAIN.COM' -LocationID 2 -Token 'adb68881994ed93960346478303476f4' -Username 'DOMAIN\USERNAME' -Password 'Ch@ng3P@ssw0rd'
     
 #>
+Function Invoke-CheckIn {
+    $servicecmd = (Join-Path $env:windir "\system32\sc.exe")
+    # Force check-in
+    Try {
+        & $servicecmd control ltservice 136 | Out-Null
+    }
+    catch { Write-Verbose "Error sending checkin"}
+}
 Function Confirm-Automate {
 <#
 .SYNOPSIS
@@ -98,7 +106,12 @@ Function Confirm-Automate {
     Version        : 1.2    
     Date           : 04/02/2020
     Changes        : Add $Automate.Service -eq $null
-                     If the service still exists, the installation is failing with Exit Code 1638.                     
+                     If the service still exists, the installation is failing with Exit Code 1638.      
+
+    Version        : 1.3    
+    Date           : 07/26/2021
+    Changes        : Changed from 600 seconds to 3600 seconds to fix the duplicate asset issue	
+					 Added Invoke-CheckIn to force agent to checkin before checking if online
                      
 .EXAMPLE
     Confirm-Automate [-Silent]
@@ -128,8 +141,12 @@ Function Confirm-Automate {
         [switch]$Silent = $False
     )
     $ErrorActionPreference = 'SilentlyContinue'
+	# Initial checkin
+	Invoke-CheckIn
+	# Sleep 15 seconds
+	Start-Sleep -s 15	
     if ((Get-ItemProperty "HKLM:\SOFTWARE\LabTech\Service").LastSuccessStatus) {
-        $Online = If ((Test-Path "HKLM:\SOFTWARE\LabTech\Service") -and ((Get-Service ltservice).status) -eq "Running") {((((Get-Date) - (Get-Date (Get-ItemProperty "HKLM:\SOFTWARE\LabTech\Service").LastSuccessStatus)).TotalSeconds) -lt 600)} Else {Write $False}
+        $Online = If ((Test-Path "HKLM:\SOFTWARE\LabTech\Service") -and ((Get-Service ltservice).status) -eq "Running") {((((Get-Date) - (Get-Date (Get-ItemProperty "HKLM:\SOFTWARE\LabTech\Service").LastSuccessStatus)).TotalSeconds) -lt 3600)} Else {Write $False}
     } else {$Online = $False}
 
     If (Test-Path "HKLM:\SOFTWARE\LabTech\Service") {

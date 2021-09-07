@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    These PowerShell Functions will Install, Push, Uninstall, and Confirm ConnectWise Automate installations. 
+    These PowerShell Functions will Install, Push, Uninstall, and Confirm ConnectWise Automate installations . 
         
 .DESCRIPTION
     Functions Included:

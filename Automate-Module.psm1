@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     These PowerShell Functions will Install, Push, Uninstall, and Confirm ConnectWise Automate installations. 
-    
+        
 .DESCRIPTION
     Functions Included:
         Confirm-Automate
@@ -48,22 +48,30 @@
     Uninstall-Automate [-Silent]
     
 .EXAMPLE
-    Install-Automate -Server 'YOURSERVER.DOMAIN.COM' -LocationID 2 [-Show]
+    Install-Automate -Server 'YOURSERVER.DOMAIN.COM' -LocationID 2 -Token 'adb68881994ed93960346478303476f4' [-Show]
     
 .Example
     To push a single Automate Agent:
-    Push-Automate -Computer 'ComputerName' -Server 'YOURSERVER.DOMAIN.COM' -LocationID 2 -Username 'DOMAIN\USERNAME' -Password 'Ch@ng3P@ssw0rd'
+    Push-Automate -Computer 'ComputerName' -Server 'YOURSERVER.DOMAIN.COM' -LocationID 2 -Token 'adb68881994ed93960346478303476f4' -Username 'DOMAIN\USERNAME' -Password 'Ch@ng3P@ssw0rd'
     
     For multiple computers, use a | "pipe" into Push-Automate function:
-    $Computers | Push-Automate -Server 'YOURSERVER.DOMAIN.COM' -LocationID 2 -Username 'DOMAIN\USERNAME' -Password 'Ch@ng3P@ssw0rd'
+    $Computers | Push-Automate -Server 'YOURSERVER.DOMAIN.COM' -LocationID 2 -Token 'adb68881994ed93960346478303476f4' -Username 'DOMAIN\USERNAME' -Password 'Ch@ng3P@ssw0rd'
     - or - 
-     Scan-Network | Push-Automate -Server 'YOURSERVER.DOMAIN.COM' -LocationID 2 -Username 'DOMAIN\USERNAME' -Password 'Ch@ng3P@ssw0rd'   
+     Scan-Network | Push-Automate -Server 'YOURSERVER.DOMAIN.COM' -LocationID 2 -Token 'adb68881994ed93960346478303476f4' -Username 'DOMAIN\USERNAME' -Password 'Ch@ng3P@ssw0rd'   
     - or -
-    Get-ADComputerNames | Push-Automate -Server 'YOURSERVER.DOMAIN.COM' -LocationID 2 -Username 'DOMAIN\USERNAME' -Password 'Ch@ng3P@ssw0rd'
+    Get-ADComputerNames | Push-Automate -Server 'YOURSERVER.DOMAIN.COM' -LocationID 2 -Token 'adb68881994ed93960346478303476f4' -Username 'DOMAIN\USERNAME' -Password 'Ch@ng3P@ssw0rd'
     - or - 
-    "Computer1", "Computer2" | Push-Automate -Server 'YOURSERVER.DOMAIN.COM' -LocationID 2 -Username 'DOMAIN\USERNAME' -Password 'Ch@ng3P@ssw0rd'
+    "Computer1", "Computer2" | Push-Automate -Server 'YOURSERVER.DOMAIN.COM' -LocationID 2 -Token 'adb68881994ed93960346478303476f4' -Username 'DOMAIN\USERNAME' -Password 'Ch@ng3P@ssw0rd'
     
 #>
+Function Invoke-CheckIn {
+    $servicecmd = (Join-Path $env:windir "\system32\sc.exe")
+    # Force check-in
+    Try {
+        & $servicecmd control ltservice 136 | Out-Null
+    }
+    catch { Write-Verbose "Error sending checkin"}
+}
 Function Confirm-Automate {
 <#
 .SYNOPSIS
@@ -98,7 +106,12 @@ Function Confirm-Automate {
     Version        : 1.2    
     Date           : 04/02/2020
     Changes        : Add $Automate.Service -eq $null
-                     If the service still exists, the installation is failing with Exit Code 1638.                     
+                     If the service still exists, the installation is failing with Exit Code 1638.      
+
+    Version        : 1.3    
+    Date           : 07/26/2021
+    Changes        : Changed from 600 seconds to 3600 seconds to fix the duplicate asset issue	
+					 Added Invoke-CheckIn to force agent to checkin before checking if online
                      
 .EXAMPLE
     Confirm-Automate [-Silent]
@@ -128,8 +141,12 @@ Function Confirm-Automate {
         [switch]$Silent = $False
     )
     $ErrorActionPreference = 'SilentlyContinue'
+	# Initial checkin
+	Invoke-CheckIn
+	# Sleep 15 seconds
+	Start-Sleep -s 15	
     if ((Get-ItemProperty "HKLM:\SOFTWARE\LabTech\Service").LastSuccessStatus) {
-        $Online = If ((Test-Path "HKLM:\SOFTWARE\LabTech\Service") -and ((Get-Service ltservice).status) -eq "Running") {((((Get-Date) - (Get-Date (Get-ItemProperty "HKLM:\SOFTWARE\LabTech\Service").LastSuccessStatus)).TotalSeconds) -lt 600)} Else {Write $False}
+        $Online = If ((Test-Path "HKLM:\SOFTWARE\LabTech\Service") -and ((Get-Service ltservice).status) -eq "Running") {((((Get-Date) - (Get-Date (Get-ItemProperty "HKLM:\SOFTWARE\LabTech\Service").LastSuccessStatus)).TotalSeconds) -lt 3600)} Else {Write $False}
     } else {$Online = $False}
 
     If (Test-Path "HKLM:\SOFTWARE\LabTech\Service") {
@@ -358,7 +375,7 @@ Function Install-Automate {
     The output will be saved to $Automate as an object to be used in other functions.
     
     Example:
-    Install-Automate -Server YOURSERVER.DOMAIN.COM -LocationID 2 -Transcript
+    Install-Automate -Server YOURSERVER.DOMAIN.COM -LocationID 2 -Token 'adb68881994ed93960346478303476f4' -Transcript
     
     
     Tested OS:      Windows XP (with .Net 3.5.1 and PowerShell installed)
@@ -375,7 +392,7 @@ Function Install-Automate {
 .PARAMETER Server
     This is the URL to your Automate server.
     
-        Install-Automate -Server 'server.hostedrmm.com' -LocationID 2
+        Install-Automate -Server 'server.hostedrmm.com' -LocationID 2 -Token 'adb68881994ed93960346478303476f4'
 
 .PARAMETER LocationID
     Use LocationID to install the Automate Agent directly to the appropieate client's location / site.
@@ -390,19 +407,19 @@ Function Install-Automate {
     This will force the Automate Uninstaller prior to installation.
     Essentually, this will be a fresh install and a fresh check-in to the Automate server.
     
-        Install-Automate -Server 'server.hostedrmm.com' -LocationID 2 -Force
+        Install-Automate -Server 'server.hostedrmm.com' -LocationID 2 -Token 'adb68881994ed93960346478303476f4' -Force
 
 .PARAMETER Silent
     This will hide all output (except a failed installation when Exit Code -ne 0)
     The function will exit once the installer has completed.
         
-        Install-Automate -Server 'server.hostedrmm.com' -LocationID 2 -Silent
+        Install-Automate -Server 'server.hostedrmm.com' -LocationID 2 -Token 'adb68881994ed93960346478303476f4' -Silent
     
 .PARAMETER Transcript
     This parameter will save the entire transcript and responsed to:
     $($env:windir)\Temp\AutomateLogon.txt
         
-        Install-Automate -Server 'server.hostedrmm.com' -LocationID 2 -Transcript -Verbose
+        Install-Automate -Server 'server.hostedrmm.com' -LocationID 2 -Token 'adb68881994ed93960346478303476f4' -Transcript -Verbose
 
 .LINK
     https://github.com/Braingears/PowerShell
@@ -430,10 +447,16 @@ Function Install-Automate {
     Version        : 1.4
     Date           : 06/29/2020
     Changes        : Added Token Parameter for Deployment 
-    
+
+    Version        : 1.5
+    Date           : 06/09/2021
+    Changes        : Attempt to Restart the LTService prior to R&R
+                     It was found that the Rip & Replace was being too aggressive without at least trying to restart the LTService 
+                     and waiting for it to check-in.
+                     
 .EXAMPLE
-    Install-Automate -Server 'automate.domain.com' -LocationID 42 -Token adb68881994ed93960346478303476f4
-    This will install the LabTech agent using the provided Server URL, and LocationID.
+    Install-Automate -Server 'automate.domain.com' -LocationID 42 -Token 'adb68881994ed93960346478303476f4'
+    This will install the LabTech agent using the provided Server URL, LocationID, and required Token. 
 
 
 #>
@@ -479,7 +502,7 @@ Function Install-Automate {
     
     Try {
         Write-Verbose "Enabling downloads to use SSL/TLS v1.2"
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        [Net.ServicePointManager]::SecurityProtocol = [Enum]::ToObject([Net.SecurityProtocolType], 3072)
     }
     Catch {
         Write-Verbose "Failed to enable SSL/TLS v1.2"
@@ -488,7 +511,7 @@ Function Install-Automate {
         Write-Host ""
         $AutomateURL = "https://$($Server)"
     }
-    
+
     Try {
         $AutomateURLTest = "$($AutomateURL)/LabTech/"
         $TestURL = (New-Object Net.WebClient).DownloadString($AutomateURLTest)
@@ -509,9 +532,35 @@ Function Install-Automate {
         $DownloadPath = "$($AutomateURL)/Labtech/Deployment.aspx?Probe=1&installType=msi&MSILocations=$($LocationID)"
         Write-Verbose "Downloading from (Old): $($DownloadPath)"
     }   
-        
     Confirm-Automate -Silent -Verbose:$Verbose
-    Write-Verbose "If ServerAddress matches, the Automate Agent is currently Online, and Not forced to Rip & Replace then Automate is already installed."
+    If (($Global:Automate.Service -eq 'Stopped') -and ($Global:Automate.ServerAddress -like "*$($Server)*") -and !($Force)) {
+        Try {
+            Write-Verbose "LTService service is Stopped"
+            Write-Verbose "LTService service is Restarting"
+            Start-Service LTService -ErrorAction Stop
+        }
+        Catch {
+            Write-Verbose "LTService service Restart Failed"
+        }            
+        If (((Get-Service LTService).Status) -eq "Running") {
+            Write-Verbose "LTService was successfully Restarted"
+            Write-Verbose "Now waiting for the Automate Agent to attempt to check-in - Loop 10X"
+            $Count = 0
+            While ($Count -ne 10) {
+                $Count++
+                Start-Sleep 6
+                Confirm-Automate -Silent -Verbose:$Verbose
+                If ($Global:Automate.Online) {
+                    If (!$Silent) {Write-Host "LTService service was successfully Restarted"}                    
+                    Break
+                }
+            }# End While
+        } Else {
+            Write-Verbose "LTService service did not return to a running status"
+        }
+    } # If LTService is Stopped     
+    
+    Write-Verbose "Checking if server address matches and if Automate Agent is Online"
     Write-Verbose (($Global:Automate.ServerAddress -like "*$($Server)*") -and ($Global:Automate.Online) -and !($Force))
     If (($Global:Automate.ServerAddress -like "*$($Server)*") -and $Global:Automate.Online -and !$Force) {
         If (!$Silent) {
@@ -788,19 +837,51 @@ BEGIN
 {
     $ErrorActionPreference = "SilentlyContinue"
     $Verbose = If ($PSBoundParameters.Verbose -eq $True) { $True } Else { $False }
-    If ((([Int][System.Environment]::OSVersion.Version.Build) -gt 6000) -and ((get-host).Version.ToString() -ge 3)) {$AutomateURL = "https://" + $Server} Else {$AutomateURL = "http://" + $Server}
-    $AutomateURLTest = $AutomateURL +"/LabTech/"
-    Write-Verbose "Checking if Automate Server URL is active. Server entered: $($Server)"
-    Write-Verbose "$AutomateURLTest"
+
+    $AutomateURL = "https://$($Server)"
+   
+    Write-Verbose "Checking Operating System"
+    If ([int]((Get-WmiObject Win32_OperatingSystem).BuildNumber) -lt 6000) {
+        $OS = ((Get-WmiObject Win32_OperatingSystem).Caption)
+        Write-Host "This computer is running $($OS), and is no longer officially supported by ConnectWise Automate" -ForegroundColor Red
+        Write-Host "https://docs.connectwise.com/ConnectWise_Automate/ConnectWise_Automate_Supportability_Statements/Supportability_Statement:_Windows_XP_and_Server_2003_End_of_Life" -ForegroundColor Red
+        Write-Host ""
+        $AutomateURL = "https://$($Server)"
+    }
+    
     Try {
-        $TestURL = (New-Object Net.WebClient).DownloadString($AutomateURLTest)
-        Write-Verbose "$($AutomateURL) is Active"
+        Write-Verbose "Enabling downloads to use SSL/TLS v1.2"
+        [Net.ServicePointManager]::SecurityProtocol = [Enum]::ToObject([Net.SecurityProtocolType], 3072)
     }
     Catch {
-        Write-Host "The Automate Server Parameter Was Not Entered or Inaccessible" -ForegroundColor Red
-        Write-Host "Help: Get-Help Push-Automate -Full"
-        Break
-        }
+        Write-Verbose "Failed to enable SSL/TLS v1.2"
+        Write-Host "This computer is not configured for SSL/TLS v1.2" -ForegroundColor Red
+        Write-Host "https://docs.connectwise.com/ConnectWise_Automate/ConnectWise_Automate_Supportability_Statements/Supportability_Statement:_TLS_1.0_and_1.1_Protocols_Unsupported" -ForegroundColor Red
+        Write-Host ""
+        $AutomateURL = "https://$($Server)"
+    }
+    
+    Try {
+        $AutomateURLTest = "$($AutomateURL)/LabTech/"
+        $TestURL = (New-Object Net.WebClient).DownloadString($AutomateURLTest)
+        Write-Verbose "$AutomateURL is Active"
+    }
+    Catch {
+        Write-Verbose "Could not download from $($AutomateURL). Switching to http://$($Server)"
+        $AutomateURL = "http://$($Server)"
+    }
+    
+    $DownloadPath = $null
+    If ($Token -ne $null) {
+        $DownloadPath = "$($AutomateURL)/Labtech/Deployment.aspx?InstallerToken=$Token"
+        Write-Verbose "Downloading from: $($DownloadPath)"
+    }
+    else {
+        Write-Verbose "A -Token <String[]> was not entered"
+        $DownloadPath = "$($AutomateURL)/Labtech/Deployment.aspx?Probe=1&installType=msi&MSILocations=$($LocationID)"
+        Write-Verbose "Downloading from (Old): $($DownloadPath)"
+    }
+
     $Whoami = whoami
     Write-Verbose "Running Script as: $whoami"
     If (($Username -eq $Null) -and ($Password -eq $Null) -and ($Credential -eq $Null) -and !((whoami) -eq 'nt authority\system'))
@@ -824,6 +905,7 @@ PROCESS
     $Time = Date
     $CheckAutomateWinRM = {
         Write-Verbose "Invoke Confirm-Automate -Silent"
+        [Net.ServicePointManager]::SecurityProtocol = [Enum]::ToObject([Net.SecurityProtocolType], 3072)
         Invoke-Expression(New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/Braingears/PowerShell/master/Automate-Module.psm1')
         Confirm-Automate -Silent
         Write $Global:Automate
@@ -835,10 +917,11 @@ PROCESS
         $Force = $Args[3]
         $Silent = $Args[4]
         $Transcript = $Args[5]
+        [Net.ServicePointManager]::SecurityProtocol = [Enum]::ToObject([Net.SecurityProtocolType], 3072)
         Invoke-Expression(New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/Braingears/PowerShell/master/Automate-Module.psm1')
         Install-Automate -Server $Server -LocationID $LocationID -Token $Token -Transcript
     }
-    $WMICMD = 'powershell.exe -Command "Invoke-Expression(New-Object Net.WebClient).DownloadString(''https://raw.githubusercontent.com/Braingears/PowerShell/master/Automate-Module.psm1''); '
+    $WMICMD = 'powershell.exe -Command "[Net.ServicePointManager]::SecurityProtocol = [Enum]::ToObject([Net.SecurityProtocolType], 3072); Invoke-Expression(New-Object Net.WebClient).DownloadString(''https://raw.githubusercontent.com/Braingears/PowerShell/master/Automate-Module.psm1''); '
     $WMIPOSH = "Install-Automate -Server $Server -LocationID $LocationID -Token $Token -Transcript"
     $WMIArg = Write-Output "$WMICMD$WMIPOSH"""
     $WinRMConectivity = "N/A"
@@ -850,6 +933,7 @@ PROCESS
     # Now Trying WinRM 
     If ($Computer -eq $env:COMPUTERNAME) {
         Write-Verbose "Installing Automate on Local Computer - $Computer"
+        [Net.ServicePointManager]::SecurityProtocol = [Enum]::ToObject([Net.SecurityProtocolType], 3072)
         Invoke-Expression(New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/Braingears/PowerShell/master/Automate-Module.psm1')
         Install-Automate -Server $Server -LocationID $LocationID -Token $Token -Show:$Show -Transcript:$Transcript
     } Else {        # Remote Computer
@@ -2420,9 +2504,9 @@ IF ($Subnet) {
 }
 ########################
 Function Install-Manage {
-# PowerShell Download & Install - ConnectWise Manage v2019.5
+# PowerShell Download & Install - ConnectWise Manage
 $SoftwarePath = "C:\Support\ConnectWise"
-$DownloadPath = "https://university.connectwise.com/install/2019.5/ConnectWise-Manage-Internet-Client.msi"
+$DownloadPath = "https://university.connectwise.com/install/ConnectWise-Internet-Client-x64.msi"
     $Filename = [System.IO.Path]::GetFileName($DownloadPath)
     $SoftwareFullPath = "$($SoftwarePath)\$Filename"
     If (!(Test-Path $SoftwarePath)) {md $SoftwarePath | Out-Null}
@@ -2450,6 +2534,8 @@ Start-Process "msiexec.exe" -ArgumentList "/i $($SoftwareFullPath) /qn" -NoNewWi
 $LastExitCode
 If ($LastExitCode -eq 0) {Write "Install Executed Without Errors"} Else {Write-Verbose "Error Exit Code: $($LastExitCode)"}
 }#Function Install-Chrome
+########################
+Function Show-LTErrors {Get-Content -Path 'C:\Windows\LTSVC\LTErrors.txt' -Tail 25 -Wait}
 ########################
 Function New-IPRange {
 <#

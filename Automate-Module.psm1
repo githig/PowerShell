@@ -170,7 +170,8 @@ Function Confirm-Automate {
         }
         Write-Verbose $Global:Automate
         If ($Show) {
-	    Start-Transcript -Path "$($env:windir)\Temp\Automate_Confirm.txt" -Force
+	    $Date = (get-date -UFormat %Y-%m-%d_%H-%M-%S)
+	    Start-Transcript -Path "$($env:windir)\Temp\Automate_Confirm_$Date.txt" -Force
             $Global:Automate
 	    Write-Verbose $Global:Automate
 	    Stop-Transcript

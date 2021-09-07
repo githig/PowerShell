@@ -141,7 +141,6 @@ Function Confirm-Automate {
         [switch]$Silent = $False
     )
     $ErrorActionPreference = 'SilentlyContinue'
-    Start-Transcript -Path "$($env:windir)\Temp\Automate_Confirm.txt" -Force
 	# Initial checkin
 	Invoke-CheckIn
 	# Sleep 15 seconds
@@ -171,7 +170,10 @@ Function Confirm-Automate {
         }
         Write-Verbose $Global:Automate
         If ($Show) {
+	    Start-Transcript -Path "$($env:windir)\Temp\Automate_Confirm.txt" -Force
             $Global:Automate
+	    Write-Verbose $Global:Automate
+	    Stop-Transcript
         } Else {
             If (!$Silent) {
                 Write "Server Address checking-in to    $($Global:Automate.ServerAddress)"
@@ -193,7 +195,6 @@ Function Confirm-Automate {
         Write-Verbose $Global:Automate
     } #End If Registry Exists
     If (!$Global:Automate.InstFolder -and !$Global:Automate.InstRegistry -and ($Global:Automate.Service -eq $Null)) {If ($Silent -eq $False) {Write "Automate is NOT Installed"}}
-    Stop-Transcript
 } #End Function Confirm-Automate
 ########################
 Set-Alias -Name LTC -Value Confirm-Automate -Description 'Confirm If Automate is running properly'

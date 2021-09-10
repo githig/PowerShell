@@ -23,7 +23,7 @@
         https://github.com/briansworth/GetIPv4Address/blob/master/GetIPv4Subnet.psm1
 
 .LINK
-    https://github.com/Braingears/PowerShell
+    https://github.com/githig/PowerShell
     
 .NOTES
     File Name      : Automate-Module.psm1
@@ -90,7 +90,7 @@ Function Confirm-Automate {
     This will hide all output
 
 .LINK
-    https://github.com/Braingears/PowerShell
+    https://github.com/githig/PowerShell
     
 .NOTES
     Version        : 1.0
@@ -212,7 +212,7 @@ Function Uninstall-Automate {
     This will hide all output
 
 .LINK
-    https://github.com/Braingears/PowerShell
+    https://github.com/githig/PowerShell
     
 .NOTES
     Version        : 1.0
@@ -426,7 +426,7 @@ Function Install-Automate {
         Install-Automate -Server 'server.hostedrmm.com' -LocationID 2 -Token 'adb68881994ed93960346478303476f4' -Transcript -Verbose
 
 .LINK
-    https://github.com/Braingears/PowerShell
+    https://github.com/githig/PowerShell
     
 .NOTES
     Version        : 1.0
@@ -757,7 +757,7 @@ Function Push-Automate
         Install-Automate -Server 'server.hostedrmm.com' -LocationID 2 -Token adb68881994ed93960346478303476f4 -Transcript -Verbose
 
 .LINK
-    https://github.com/Braingears/PowerShell
+    https://github.com/githig/PowerShell
 
 .NOTES
     Version        : 1.0
@@ -910,7 +910,7 @@ PROCESS
     $CheckAutomateWinRM = {
         Write-Verbose "Invoke Confirm-Automate -Silent"
         [Net.ServicePointManager]::SecurityProtocol = [Enum]::ToObject([Net.SecurityProtocolType], 3072)
-        Invoke-Expression(New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/Braingears/PowerShell/master/Automate-Module.psm1')
+        Invoke-Expression(New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/githig/PowerShell/master/Automate-Module.psm1')
         Confirm-Automate -Silent
         Write $Global:Automate
     }
@@ -922,10 +922,10 @@ PROCESS
         $Silent = $Args[4]
         $Transcript = $Args[5]
         [Net.ServicePointManager]::SecurityProtocol = [Enum]::ToObject([Net.SecurityProtocolType], 3072)
-        Invoke-Expression(New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/Braingears/PowerShell/master/Automate-Module.psm1')
+        Invoke-Expression(New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/githig/PowerShell/master/Automate-Module.psm1')
         Install-Automate -Server $Server -LocationID $LocationID -Token $Token -Transcript
     }
-    $WMICMD = 'powershell.exe -Command "[Net.ServicePointManager]::SecurityProtocol = [Enum]::ToObject([Net.SecurityProtocolType], 3072); Invoke-Expression(New-Object Net.WebClient).DownloadString(''https://raw.githubusercontent.com/Braingears/PowerShell/master/Automate-Module.psm1''); '
+    $WMICMD = 'powershell.exe -Command "[Net.ServicePointManager]::SecurityProtocol = [Enum]::ToObject([Net.SecurityProtocolType], 3072); Invoke-Expression(New-Object Net.WebClient).DownloadString(''https://raw.githubusercontent.com/githig/PowerShell/master/Automate-Module.psm1''); '
     $WMIPOSH = "Install-Automate -Server $Server -LocationID $LocationID -Token $Token -Transcript"
     $WMIArg = Write-Output "$WMICMD$WMIPOSH"""
     $WinRMConectivity = "N/A"
@@ -938,7 +938,7 @@ PROCESS
     If ($Computer -eq $env:COMPUTERNAME) {
         Write-Verbose "Installing Automate on Local Computer - $Computer"
         [Net.ServicePointManager]::SecurityProtocol = [Enum]::ToObject([Net.SecurityProtocolType], 3072)
-        Invoke-Expression(New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/Braingears/PowerShell/master/Automate-Module.psm1')
+        Invoke-Expression(New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/githig/PowerShell/master/Automate-Module.psm1')
         Install-Automate -Server $Server -LocationID $LocationID -Token $Token -Show:$Show -Transcript:$Transcript
     } Else {        # Remote Computer
         If (!$Silent) {Write-Host "$($Time) - Now Checking $($COMPUTER)"}
